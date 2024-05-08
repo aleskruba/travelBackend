@@ -158,7 +158,7 @@ module.exports.google_auth_post_signup = async (req, res) => {
 
         if (rows.length === 0) {
             // User does not exist, create a new user entry in the database
-            const [newUser] = await pool.query('INSERT INTO User (email, firstName, image, googleEmail,googleName,googleProfilePicture) VALUES (?, ?, ?, ?, ?, ?)', [email, name, profilePicture,email, name, profilePicture]);
+            const [newUser] = await pool.query('INSERT INTO user (email, firstName, image, googleEmail,googleName,googleProfilePicture) VALUES (?, ?, ?, ?, ?, ?)', [email, name, profilePicture,email, name, profilePicture]);
 
             // Generate access token and refresh token for the new user
             const accessToken = createToken(newUser.insertId);
