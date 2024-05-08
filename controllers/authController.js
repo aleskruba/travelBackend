@@ -154,7 +154,7 @@ module.exports.google_auth_post_signup = async (req, res) => {
 
 
         // Check if the user exists in the database based on the email
-        let [rows] = await pool.query('SELECT * FROM User WHERE email = ?', [email]);
+        let [rows] = await pool.query('SELECT * FROM user WHERE email = ?', [email]);
 
         if (rows.length === 0) {
             // User does not exist, create a new user entry in the database
@@ -210,7 +210,7 @@ module.exports.google_auth_post_login = async (req, res) => {
 
     try {
 
-         let [rows] = await pool.query('SELECT * FROM User WHERE googleEmail = ?', [email]);
+         let [rows] = await pool.query('SELECT * FROM user WHERE googleEmail = ?', [email]);
 
          console.log("rows",rows)
 
