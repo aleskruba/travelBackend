@@ -13,16 +13,6 @@
     googleProfilePicture VARCHAR(255)
 );
 
-/* CREATE TABLE User (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(255),
-    firstName VARCHAR(255),
-    lastName VARCHAR(255),
-    email VARCHAR(255) NOT NULL,
-    registrationDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    password VARCHAR(255) NOT NULL,
-    image VARCHAR(255)
-); */
 
 CREATE TABLE Message (
     id INT AUTO_INCREMENT PRIMARY KEY,

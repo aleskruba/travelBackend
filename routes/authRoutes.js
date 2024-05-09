@@ -9,7 +9,8 @@ router.post('/api/login', authController.login_post);
 router.get('/api/logout', authController.logout_get);
 router.post('/api/googleauthSignUp', authController.google_auth_post_signup);
 router.post('/api/googleauthLogin', authController.google_auth_post_login);
-
+router.put('/api/updateprofile',authController.updateProfile)
+router.put('/api/updatepassword',authController.updatePassword)
 
 router.get('/api/checkuser', checkUser, (req, res) => {
     if (req.user) {

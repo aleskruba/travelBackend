@@ -92,9 +92,9 @@ module.exports.signup_post = async (req, res) => {
     } catch (error) {
         console.error('Error signing up:', error);
         if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json('User with this email already exists');
+            return res.status(400).json('Tento uživatel již existuje');
         }
-        res.status(500).json({ error: 'An internal server error occurred' });
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 };
 
@@ -143,7 +143,7 @@ module.exports.login_post = async (req, res) => {
 
     } catch (err) {
         console.error('Error logging in:', err);
-        res.status(500).json({ error: 'An internal server error occurred' });
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 };
 
@@ -193,11 +193,11 @@ module.exports.google_auth_post_signup = async (req, res) => {
             });
         } else {
             // User already exists, send a message indicating that the user is already registered
-            return res.status(400).json({error:'User with this email already exists'});
+            return res.status(400).json({error:'Uživatel s tímto emailem již existuje'});
         }
     } catch (error) {
         console.error('Error during Google authentication:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 };
 
@@ -246,9 +246,119 @@ module.exports.google_auth_post_login = async (req, res) => {
         }
     } catch (error) {
         console.error('Error during Google authentication:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 };
+
+module.exports.updateProfile = async (req, res) => {
+    const token = req.cookies.jwt;
+    const updateProfile = req.body;
+    const userId = updateProfile.id;
+    const username = updateProfile.username;
+    const firstName = updateProfile.firstName;
+    const lastName = updateProfile.lastName;
+    const email = updateProfile.email;
+
+    try {
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        }
+
+        const sql = `UPDATE user SET username=?, firstName=?, lastName=?, email=? WHERE id=?`;
+
+        // Execute the SQL query using await
+        await pool.query(sql, [username, firstName, lastName, email, userId]);
+
+        // Generate tokens
+        const accessToken = createToken(updateProfile.id);
+        const refreshToken = createRefreshToken(updateProfile.id);
+
+        res.cookie('jwt', accessToken, {
+            httpOnly: true,
+            maxAge: 5 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+        res.status(201).json({
+            message: 'update proběhl úspěšně',
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        });
+
+    } catch (err) {
+        console.error('Error updating user profile:', err);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+}
+
+module.exports.updatePassword = async (req, res, next) => {
+    const token = req.cookies.jwt;
+    const newPassword = req.body;
+    const password = newPassword.password;
+    const confirmPassword = newPassword.confirmPassword;
+
+    try {
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        }
+
+        // Verify the JWT token
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decodedToken.id;
+
+        console.log(userId);
+
+        // Check if passwords match
+        if (password !== confirmPassword) {
+            return res.status(401).json({ error: 'Hesla nejsou stejná '});
+        }
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Update the user's password in the database
+        const sql = `UPDATE user SET password=? WHERE id=?`;
+        await pool.query(sql, [hashedPassword, userId]);
+
+        // Generate new tokens
+        const accessToken = createToken(userId);
+        const refreshToken = createRefreshToken(userId);
+
+        // Set cookies
+        res.cookie('jwt', accessToken, {
+            httpOnly: true,
+            maxAge: 5 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+        // Send success response
+        res.status(201).json({
+            message: 'Heslo úspěšně změněno',
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        });
+    } catch (error) {
+        console.error('Error updating password:', error);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+}
+
 
 
 module.exports.logout_get = async (req, res,next) => {
