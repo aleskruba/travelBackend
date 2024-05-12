@@ -1,16 +1,13 @@
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
+const Database = require('../database');
+
+const database = new Database();
 
 dotenv.config();
 
-const pool = mysql.createPool({
-    connectionLimit: 10,
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME
-});
+
 
 const checkUser = async (req, res, next) => {
     const token = req.cookies.jwt;
@@ -19,7 +16,7 @@ const checkUser = async (req, res, next) => {
             const decodedToken = await jwt.verify(token, process.env.JWT_SECRET);
             req.user = decodedToken; 
 
-            const [rows] = await pool.query('SELECT * FROM user WHERE id = ?', [req.user.id]);
+            const rows = await database.query('SELECT * FROM user WHERE id = ?', [req.user.id]);
 
             if (rows.length > 0) {
                 req.user = rows[0]; 

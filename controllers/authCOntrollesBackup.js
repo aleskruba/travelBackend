@@ -1,9 +1,17 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const Database = require('../database');
-const axios = require('axios');
+const dotenv = require('dotenv');
+const mysql = require('mysql2/promise');
 
-const database = new Database();
+dotenv.config();
+
+const pool = mysql.createPool({
+    connectionLimit: 10,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME
+});
 
 const createToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -16,6 +24,7 @@ const createRefreshToken = (id) => {
         expiresIn: '360d'
     });
 };
+
 
 module.exports.refresh_token_post = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
@@ -43,7 +52,7 @@ module.exports.signup_post = async (req, res) => {
             return res.status(400).json({ error: 'Passwords do not match' });
         }
 
-        const existingUser = await database.query('SELECT * FROM user WHERE email = ?', [email]);
+        const [existingUser] = await pool.query('SELECT * FROM user WHERE email = ?', [email]);
         if (existingUser.length > 0) {
        
             return res.status(400).json('User with this email already exists');
@@ -51,7 +60,7 @@ module.exports.signup_post = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newUser = await database.execute('INSERT INTO user (email, password) VALUES (?, ?)', [email, hashedPassword]);
+        const [newUser] = await pool.query('INSERT INTO user (email, password) VALUES (?, ?)', [email, hashedPassword]);
 
         const accessToken = createToken(newUser.insertId);
         const refreshToken = createRefreshToken(newUser.insertId);
@@ -71,10 +80,11 @@ module.exports.signup_post = async (req, res) => {
         });
 
         res.status(201).json({
-            message: 'Registration successful',
+            message: 'Registrace proběhla úspěšně',
             user: {
                 id: newUser.insertId,
                 email: email,
+             
             },
             accessToken: accessToken,
             refreshToken: refreshToken
@@ -82,27 +92,29 @@ module.exports.signup_post = async (req, res) => {
     } catch (error) {
         console.error('Error signing up:', error);
         if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json('User already exists');
+            return res.status(400).json('Tento uživatel již existuje');
         }
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 };
+
 
 module.exports.login_post = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const users = await database.query('SELECT * FROM user WHERE email = ?', [email]);
+   
+        const [users] = await pool.query('SELECT * FROM user WHERE email = ?', [email]);
         
-        if (users.length === 0) {
-            return res.status(400).json({ error: 'Invalid email or password' });
+          if (users.length === 0) {
+            return res.status(400).json({ error: 'Špatný email nebo heslo' });
         }
 
         const user = users[0];
         
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+            return res.status(401).json({ error: 'Špatný email nebo heslo' });
         }
 
         const accessToken = createToken(user.id);
@@ -123,28 +135,32 @@ module.exports.login_post = async (req, res) => {
         });
 
         res.status(201).json({
-            message: 'Login successful',
-            user: user,
+            message: 'Přihlášení proběhlo úspěšně',
+            user:user,
             accessToken: accessToken,
             refreshToken: refreshToken
         });
 
     } catch (err) {
         console.error('Error logging in:', err);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 };
 
 module.exports.google_auth_post_signup = async (req, res) => {
     try {
-
+        // Extract necessary data from the request body
         const { email, name, profilePicture } = req.body;
 
-        let rows = await database.query('SELECT * FROM user WHERE email = ?', [email]);
+
+        // Check if the user exists in the database based on the email
+        let [rows] = await pool.query('SELECT * FROM user WHERE email = ?', [email]);
 
         if (rows.length === 0) {
-            const newUser = await database.query('INSERT INTO user (email, firstName, image, googleEmail,googleName,googleProfilePicture) VALUES (?, ?, ?, ?, ?, ?)', [email, name, profilePicture,email, name, profilePicture]);
+            // User does not exist, create a new user entry in the database
+            const [newUser] = await pool.query('INSERT INTO user (email, firstName, image, googleEmail,googleName,googleProfilePicture) VALUES (?, ?, ?, ?, ?, ?)', [email, name, profilePicture,email, name, profilePicture]);
 
+            // Generate access token and refresh token for the new user
             const accessToken = createToken(newUser.insertId);
             const refreshToken = createRefreshToken(newUser.insertId);
 
@@ -163,6 +179,7 @@ module.exports.google_auth_post_signup = async (req, res) => {
                 sameSite: 'none'
             });
 
+            // Send the tokens back to the frontend
             res.status(201).json({
                 message: 'Registrace proběhla úspěšně',
                 user: {
@@ -175,7 +192,8 @@ module.exports.google_auth_post_signup = async (req, res) => {
                 refreshToken: refreshToken
             });
         } else {
-               return res.status(400).json({error:'Uživatel s tímto emailem již existuje'});
+            // User already exists, send a message indicating that the user is already registered
+            return res.status(400).json({error:'Uživatel s tímto emailem již existuje'});
         }
     } catch (error) {
         console.error('Error during Google authentication:', error);
@@ -192,7 +210,7 @@ module.exports.google_auth_post_login = async (req, res) => {
 
     try {
 
-         let rows = await database.query('SELECT * FROM user WHERE googleEmail = ?', [email]);
+         let [rows] = await pool.query('SELECT * FROM user WHERE googleEmail = ?', [email]);
 
          console.log("rows",rows)
 
@@ -248,9 +266,9 @@ module.exports.updateProfile = async (req, res) => {
 
         const sql = `UPDATE user SET username=?, firstName=?, lastName=?, email=? WHERE id=?`;
 
-        await database.query(sql, [username, firstName, lastName, email, userId]);
+         await pool.query(sql, [username, firstName, lastName, email, userId]);
 
-        const accessToken = createToken(updateProfile.id);
+           const accessToken = createToken(updateProfile.id);
         const refreshToken = createRefreshToken(updateProfile.id);
 
         res.cookie('jwt', accessToken, {
@@ -298,13 +316,12 @@ module.exports.updatePassword = async (req, res, next) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const sql = `UPDATE user SET password=? WHERE id=?`;
-        await database.query(sql, [hashedPassword, userId]);
 
- 
+        const sql = `UPDATE user SET password=? WHERE id=?`;
+        await pool.query(sql, [hashedPassword, userId]);
+
         const accessToken = createToken(userId);
         const refreshToken = createRefreshToken(userId);
-
 
         res.cookie('jwt', accessToken, {
             httpOnly: true,
@@ -320,7 +337,7 @@ module.exports.updatePassword = async (req, res, next) => {
             sameSite: 'none'
         });
 
-      
+        // Send success response
         res.status(201).json({
             message: 'Heslo úspěšně změněno',
             accessToken: accessToken,
@@ -332,53 +349,6 @@ module.exports.updatePassword = async (req, res, next) => {
     }
 }
 
-
-module.exports.uploadprofileimage = async (req, res, next) => {
-    const token = req.cookies.jwt;
-    const base64String = req.body.image; // Accessing the base64 string from req.body
-
-    try {
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
-
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
-
-        const cloudinaryUrl = process.env.PUBLIC_CLOUDINARY_URL;
-
-        if (!cloudinaryUrl) {
-            console.error("Cloudinary URL is not defined!");
-            return res.status(500).json({ error: 'Cloudinary URL is not defined' });
-        }
-
-        if (!base64String) {
-            // Handle case where base64String is not defined
-            console.error('No image selected for upload');
-            return res.status(400).json({ error: 'No image selected for upload' });
-        }
-
-        // Directly send the base64 string to Cloudinary
-        const cloudinaryUploadResponse = await axios.post(
-            cloudinaryUrl,
-            {
-                file: base64String,
-                upload_preset: 'schoolapp', // Set your Cloudinary upload preset here
-            }
-        );
-
-        const imageUrl = cloudinaryUploadResponse.data.secure_url;
-
-        const sql = `UPDATE user SET image=? WHERE id=?`;
-        await database.query(sql, [imageUrl, userId]);
-
-
-        res.status(201).json({ imageUrl      });
-    } catch (error) {
-        console.error('Error during uploading image:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-}
 
 
 module.exports.logout_get = async (req, res,next) => {
