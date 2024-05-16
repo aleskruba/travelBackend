@@ -2,20 +2,13 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const Database = require('../database');
 const axios = require('axios');
-
+const validator = require('validator')
 const database = new Database();
+const nodemailer = require('nodemailer');
+const { generateOTP } = require('../middleware/authMiddleware');
+const {createToken,createRefreshToken,createResetPasswordToken} = require('../jwt/jwtControllers')
 
-const createToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '10d'
-    });
-};
 
-const createRefreshToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '360d'
-    });
-};
 
 module.exports.refresh_token_post = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
@@ -40,7 +33,19 @@ module.exports.signup_post = async (req, res) => {
 
     try {
         if (password !== confirmPassword) {
-            return res.status(400).json({ error: 'Passwords do not match' });
+            return res.status(400).json({ error: 'Hesla nejsou stejná '});
+        }
+
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ error: 'Špatný formát emailu' });
+        }
+
+        if (email.trim().length < 4 || email.trim().length > 50) {
+            return res.status(400).json({ error: 'E-mail musí mít 4 až 50 znaků' });
+        }
+
+        if (password.trim().length < 8 || password.trim().length > 50) {
+            return res.status(400).json({ error: 'Heslo musí mít 8 až 50 znaků' });
         }
 
         const existingUser = await database.query('SELECT * FROM user WHERE email = ?', [email]);
@@ -71,7 +76,7 @@ module.exports.signup_post = async (req, res) => {
         });
 
         res.status(201).json({
-            message: 'Registration successful',
+            message: 'Registrace proběhla úspěšně',
             user: {
                 id: newUser.insertId,
                 email: email,
@@ -123,7 +128,7 @@ module.exports.login_post = async (req, res) => {
         });
 
         res.status(201).json({
-            message: 'Login successful',
+            message: 'Příhlášení proběhlo úspěšně',
             user: user,
             accessToken: accessToken,
             refreshToken: refreshToken
@@ -162,18 +167,20 @@ module.exports.google_auth_post_signup = async (req, res) => {
                 secure: true,
                 sameSite: 'none'
             });
-
             res.status(201).json({
                 message: 'Registrace proběhla úspěšně',
                 user: {
-                    id: newUser.insertId,
+                    id: newUser,
+                    googleEmail: email,
                     email: email,
                     image:profilePicture,
-                    name:name
+                    googleProfilePicture: profilePicture,
+                    firstName:name
                 },
                 accessToken: accessToken,
                 refreshToken: refreshToken
-            });
+            }); 
+
         } else {
                return res.status(400).json({error:'Uživatel s tímto emailem již existuje'});
         }
@@ -240,16 +247,41 @@ module.exports.updateProfile = async (req, res) => {
     const firstName = updateProfile.firstName;
     const lastName = updateProfile.lastName;
     const email = updateProfile.email;
+    const googleEmail=updateProfile.googleEmail
+
 
     try {
         if (!token) {
             return res.status(401).json({ error: 'Unauthorized: No token provided' });
         }
 
+        
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ error: 'Špatný formát emailu' });
+        }
+
+        if
+         (email.trim().length < 4 || email.trim().length > 50) {
+            return res.status(400).json({ error: 'E-mail musí mít 4 až 50 znaků' });
+        }
+
+        if (username.trim().length < 4 || username.trim().length > 15) {
+            return res.status(400).json({ error: 'Username musí mít 4 až 15 znaků' });
+        }
+        if (firstName.trim().length < 2 || firstName.trim().length > 20) {
+            return res.status(400).json({ error: 'Jméno musí mít 3 až 20 znaků' });
+        }
+        if (lastName.trim().length < 2 || lastName.trim().length > 20) {
+            return res.status(400).json({ error: 'Příjmeni musí mít 2 až 20 znaků' });
+        }
+
+        if  (googleEmail) {
+            const sql = `UPDATE user SET username=?, firstName=?, lastName=? WHERE id=?`;
+            await database.query(sql, [username, firstName, lastName,  userId]);
+        } else {
         const sql = `UPDATE user SET username=?, firstName=?, lastName=?, email=? WHERE id=?`;
-
         await database.query(sql, [username, firstName, lastName, email, userId]);
-
+        }
         const accessToken = createToken(updateProfile.id);
         const refreshToken = createRefreshToken(updateProfile.id);
 
@@ -295,6 +327,10 @@ module.exports.updatePassword = async (req, res, next) => {
 
         if (password !== confirmPassword) {
             return res.status(401).json({ error: 'Hesla nejsou stejná '});
+        }
+
+        if (password.trim().length < 8 || password.trim().length > 50) {
+            return res.status(400).json({ error: 'Heslo musí mít 8 až 50 znaků' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -380,6 +416,241 @@ module.exports.uploadprofileimage = async (req, res, next) => {
     }
 }
 
+
+
+
+module.exports.sendOTP = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+
+        const otp = await generateOTP(4)
+
+
+        let transporter = nodemailer.createTransport({
+            host: process.env.EMAILHOST,
+            port: process.env.EMAILPORT,
+            secure: false, // true for 465, false for other ports
+            auth: {
+                user: process.env.EMAILUSER,
+                pass: process.env.EMAILPASSWORD,
+            },
+        });
+
+        let mailOptions = {
+            from: process.env.EMAILUSER,
+            to: email,
+            subject: 'TEST ZAPOMENUTÉHO HESLA',
+            text: ` ${email}, NOVÝ KÓD ${otp}`,
+            html: `<b>${otp}</b>`, // html body
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.log(error);
+                return res.status(500).json({ error: 'Email sending failed' });
+            } else {
+                console.log('Email sent:', info.response);
+                const accessToken = createResetPasswordToken(otp,email);
+                
+                res.cookie('jwtforgottenpassword', accessToken, {
+                    httpOnly: true,
+                    maxAge: 5* 60 * 1000,
+                    secure: true,
+                    sameSite: 'none'
+                });
+
+
+                res.status(201).json({ message: 'OTP sent successfully!' });
+            }
+        });
+
+    } catch (err) {
+        console.error('Error sending OTP:', err);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+};
+
+
+module.exports.verifyOTP = async (req, res, next) => {
+    const token = req.cookies.jwtforgottenpassword;
+    const values = req.body;
+
+    try {
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        }
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+
+        console.log('values:',values)
+        console.log(decodedToken)
+
+        if (values.otp === decodedToken.id) {
+
+   
+            res.status(201).json({ message: 'Kód úspěšně ověřen' });
+        }
+        else {
+            res.status(401).json({ message: 'Chybný kód' });
+        }
+    } catch(error) {
+        res.status(500).json({ message: 'Chybný kód' });
+    }
+
+}
+
+
+
+
+module.exports.resetPassword = async (req, res, next) => {
+    const token = req.cookies.jwtforgottenpassword;
+    const values = req.body;
+    const password = values.password;
+    const confirmPassword = values.confirmPassword;
+    console.log(values)
+    try {
+       if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        }
+
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        const tokenId = decodedToken.id;
+        const userEmail = decodedToken.email;
+        console.log(tokenId,userEmail);
+         if (password !== confirmPassword) {
+            return res.status(401).json({ error: 'Hesla nejsou stejná '});
+        }
+
+        if (password.trim().length < 8 || password.trim().length > 50) {
+            return res.status(400).json({ error: 'Heslo musí mít 8 až 50 znaků' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const sql = `UPDATE user SET password=? WHERE email=?`;
+        await database.query(sql, [hashedPassword, userEmail]);
+
+        const users = await database.query('SELECT * FROM user WHERE email = ?', [userEmail]);
+        
+        if (users.length === 0) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        const user = users[0];
+ 
+        const accessToken = createToken(user.id);
+        const refreshToken = createRefreshToken(user.id);
+
+
+        res.cookie('jwt', accessToken, {
+            httpOnly: true,
+            maxAge: 5 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+        const newAccessToken = createResetPasswordToken('1','1');
+
+
+            res.cookie('jwtforgottenpassword', newAccessToken, {
+                httpOnly: true,
+                maxAge: 0, // or set a new expiration time if needed
+                secure: true,
+                sameSite: 'none'
+            });
+      
+        res.status(201).json({
+            message: 'Heslo úspěšně změněno',
+            user: user,
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        }); 
+
+    } catch (error) {
+        console.error('Error updating password:', error);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+}
+
+module.exports.checkResetPasswordToken = async (req, res, next) => {
+
+    const token = req.cookies.jwtforgottenpassword	;
+    const value = req.body
+    console.log(value);
+    try {
+         if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        } 
+        console.log('checkResetPasswordToken',token);
+        return res.status(201).json({ message: 'You are allowed to change the password',}); 
+    } catch (error) {
+        return res.status(401).json({ message: 'You are allowed to change the password',}); 
+      throw error;
+    }
+}
+
+module.exports.updatePassword = async (req, res, next) => {
+    const token = req.cookies.jwt;
+    const newPassword = req.body;
+    const password = newPassword.password;
+    const confirmPassword = newPassword.confirmPassword;
+
+    try {
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        }
+
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decodedToken.id;
+
+        if (password !== confirmPassword) {
+            return res.status(401).json({ error: 'Hesla nejsou stejná '});
+        }
+
+        if (password.trim().length < 8 || password.trim().length > 50) {
+            return res.status(400).json({ error: 'Heslo musí mít 8 až 50 znaků' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const sql = `UPDATE user SET password=? WHERE id=?`;
+        await database.query(sql, [hashedPassword, userId]);
+
+ 
+        const accessToken = createToken(userId);
+        const refreshToken = createRefreshToken(userId);
+
+
+        res.cookie('jwt', accessToken, {
+            httpOnly: true,
+            maxAge: 5 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            secure: true,
+            sameSite: 'none'
+        });
+
+      
+        res.status(201).json({
+            message: 'Heslo úspěšně změněno',
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        });
+    } catch (error) {
+        console.error('Error updating password:', error);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+}
 
 module.exports.logout_get = async (req, res,next) => {
 

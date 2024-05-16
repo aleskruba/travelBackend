@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const authController = require('../controllers/authController');
-const { checkUser } = require('../middleware/authMiddleware');
+const { checkUser, verifyUser } = require('../middleware/authMiddleware');
 
 const router = Router();
 
@@ -12,6 +12,11 @@ router.post('/api/googleauthLogin', authController.google_auth_post_login);
 router.put('/api/updateprofile',authController.updateProfile)
 router.put('/api/updatepassword',authController.updatePassword)
 router.put('/api/uploadprofileimage',authController.uploadprofileimage)
+router.post('/api/sendotp', verifyUser, authController.sendOTP);
+router.post('/api/verifyotp',  authController.verifyOTP);
+router.put('/api/resetpassword',  authController.resetPassword);
+router.post('/api/checkResetPasswordToken',  authController.checkResetPasswordToken);
+
 
 
 router.get('/api/checkuser', checkUser, (req, res) => {
