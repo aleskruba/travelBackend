@@ -3,12 +3,12 @@ const bcrypt = require('bcrypt');
 const Database = require('../database');
 const axios = require('axios');
 const validator = require('validator')
-const database = new Database();
 const nodemailer = require('nodemailer');
 const { generateOTP } = require('../middleware/authMiddleware');
-const {createToken,createRefreshToken,createResetPasswordToken} = require('../jwt/jwtControllers')
+const {createToken,createRefreshToken,createResetPasswordToken} = require('../jwt/jwtControllers');
 
 
+const database = new Database();
 
 module.exports.refresh_token_post = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
@@ -243,13 +243,13 @@ module.exports.updateProfile = async (req, res) => {
     const token = req.cookies.jwt;
     const updateProfile = req.body;
     const userId = updateProfile.id;
-    const username = updateProfile.username;
-    const firstName = updateProfile.firstName;
-    const lastName = updateProfile.lastName;
+    const username = updateProfile.username ?? null;
+    const firstName = updateProfile.firstName ?? null;
+    const lastName = updateProfile.lastName ?? null;
     const email = updateProfile.email;
     const googleEmail=updateProfile.googleEmail
 
-
+console.log(username.length)
     try {
         if (!token) {
             return res.status(401).json({ error: 'Unauthorized: No token provided' });
@@ -265,16 +265,24 @@ module.exports.updateProfile = async (req, res) => {
             return res.status(400).json({ error: 'E-mail musí mít 4 až 50 znaků' });
         }
 
-        if (username.trim().length < 4 || username.trim().length > 15) {
-            return res.status(400).json({ error: 'Username musí mít 4 až 15 znaků' });
-        }
-        if (firstName.trim().length < 2 || firstName.trim().length > 20) {
-            return res.status(400).json({ error: 'Jméno musí mít 3 až 20 znaků' });
-        }
-        if (lastName.trim().length < 2 || lastName.trim().length > 20) {
-            return res.status(400).json({ error: 'Příjmeni musí mít 2 až 20 znaků' });
-        }
+        if ((username && username.trim().length > 0) || 
+            (firstName && firstName.trim().length > 0) || 
+            (lastName && lastName.trim().length > 0)) {
 
+                if (username && (username.trim().length < 4 || username.trim().length > 15)) {
+                    return res.status(400).json({ error: 'Username musí mít 4 až 15 znaků' });
+                }
+
+                if (firstName && (firstName.trim().length < 2 || firstName.trim().length > 20)) {
+                    return res.status(400).json({ error: 'Jméno musí mít 2 až 20 znaků' });
+                }
+
+                if (lastName && (lastName.trim().length < 2 || lastName.trim().length > 20)) {
+                    return res.status(400).json({ error: 'Příjmeni musí mít 2 až 20 znaků' });
+                }
+            }
+      console.log('is 0 ')
+      
         if  (googleEmail) {
             const sql = `UPDATE user SET username=?, firstName=?, lastName=? WHERE id=?`;
             await database.query(sql, [username, firstName, lastName,  userId]);

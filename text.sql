@@ -16,7 +16,7 @@
 
 CREATE TABLE Message (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    date DATETIME,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     message TEXT,
     user_id INT,
     FOREIGN KEY (user_id) REFERENCES User(id)
@@ -24,7 +24,7 @@ CREATE TABLE Message (
 
 CREATE TABLE Reply (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    date DATETIME,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     message TEXT,
     message_id INT,
     user_id INT,
