@@ -6,7 +6,7 @@ dotenv.config();
 const cors = require('cors');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
-
+import serverless from "serverless-http";
 
 
 const authRoutes = require('./routes/authRoutes');
@@ -34,6 +34,9 @@ app.get('/api', (req, res) => {
   
 
 app.use(authRoutes,messageRoutes);
+
+export const handler = serverless(api);
+
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
