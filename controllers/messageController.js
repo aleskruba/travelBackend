@@ -11,7 +11,10 @@ module.exports.createMessage = async (req, res) => {
 
    
     try {
-
+        if (!message.message.length) {
+            return res.status(403).json({ error: 'Žádný text' });
+  }
+  
         if (message.message.length > 400 ) {
             return res.status(403).json({ error: 'Příliš dlouhý text , max 250 znaků' });
   }
@@ -127,6 +130,11 @@ module.exports.createReply = async (req, res) => {
    
     try {
 
+            if (!message.message.length) {
+                return res.status(403).json({ error: 'Žádný text' });
+      }
+      
+
         if (message.message.length > 400 ) {
             return res.status(403).json({ error: 'Příliš dlouhý text , max 250 znaků' });
   }
@@ -221,7 +229,7 @@ module.exports.deleteReply = async (req, res) => {
             return res.status(401).json({ error: 'Unauthorized User' });
         }
     
-        const result = await database.query('DELETE FROM message WHERE id = ?', [messageId]);
+        const result = await database.query('DELETE FROM reply WHERE id = ?', [messageId]);
 
 
         if (result.affectedRows === 0) {
