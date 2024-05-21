@@ -4,7 +4,7 @@ const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 dotenv.config();
 const cors = require('cors');
-const mysql = require('mysql2');
+//const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 
 
