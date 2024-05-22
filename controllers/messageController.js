@@ -11,9 +11,9 @@ module.exports.createMessage = async (req, res) => {
 
    
     try {
-        if (!message.message.length) {
+        if (!message.message.trim().length) {
             return res.status(403).json({ error: 'Žádný text' });
-  }
+        }
   
         if (message.message.length > 400 ) {
             return res.status(403).json({ error: 'Příliš dlouhý text , max 250 znaků' });
@@ -47,6 +47,7 @@ module.exports.createMessage = async (req, res) => {
 
 module.exports.getMessages = async (req, res) => {
     const countryId = req.params.id; 
+
 
     try {
 
@@ -246,3 +247,76 @@ module.exports.deleteReply = async (req, res) => {
     }
 };
 
+module.exports.getBlogs = async (req, res) => {
+    const countryId = req.params.id; 
+    console.log('blog',countryId);
+    try {
+
+        const cards = await database.query(`
+                        SELECT 
+                            video.id,
+                            video.title,
+                            video.video,
+                            video.user_id,
+                            user.firstName AS firstName
+                         FROM 
+                            video
+                        JOIN 
+                            user ON video.user_id = user.id
+                        WHERE 
+                            video.country = ?; 
+                    `, [countryId]); 
+    
+             
+
+             
+            res.status(201).json({cards:cards});
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+
+}
+
+module.exports.createBlog = async (req, res) => {
+    const card = req.body
+    const token = req.cookies.jwt;
+
+    console.log(card)
+   
+    try {
+        if (!card.title.trim().length || !card.video.trim().length  ) {
+            return res.status(403).json({ error: 'Žádný text' });
+        
+  }
+  
+        if (card.title.length > 100  || card.video.length > 100 ) {
+            return res.status(403).json({ error: 'Příliš dlouhý text , max 100 znaků' });
+  }
+  
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        }
+        
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decodedToken.id;
+    
+        
+        
+        if (userId !== card.user_id) {
+            return res.status(401).json({ error: 'Unauthorized User' });
+        }
+
+        
+        const newBlog = await database.query('INSERT INTO video (country,title,video,user_id) VALUES (?, ?, ? ,?)', [card.country,card.title,card.video,userId]);
+         res.status(201).json({ message: newBlog.insertId });
+       
+
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+
+}

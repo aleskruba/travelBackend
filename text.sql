@@ -40,3 +40,6 @@ CREATE TABLE Video (
     user_id INT,
     FOREIGN KEY (user_id) REFERENCES User(id)
 );
+
+
+ALTER TABLE reply CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
