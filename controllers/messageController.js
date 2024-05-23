@@ -320,3 +320,43 @@ module.exports.createBlog = async (req, res) => {
     }
 
 }
+
+
+module.exports.getYourBlogs = async (req, res) => {
+    const token = req.cookies.jwt;
+    console.log(token);
+    try {
+
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: No token provided' });
+        }
+
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decodedToken.id;
+    
+
+        const cards = await database.query(`
+                        SELECT 
+                            video.id,
+                            video.title,
+                            video.country,
+                            video.video,
+                            video.user_id,
+                            user.firstName AS firstName
+                         FROM 
+                            video
+                        JOIN 
+                            user ON video.user_id = user.id
+                        WHERE 
+                        user.id = ?; 
+                    `, [userId]); 
+    
+             
+            res.status(201).json({cards:cards});
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+
+}

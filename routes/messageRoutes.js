@@ -15,6 +15,7 @@ router.delete('/api/deletereply', messageController.deleteReply);
 router.get('/api/getblogs/:id', messageController.getBlogs);
 router.post('/api/createblog', messageController.createBlog);
 //router.delete('/api/deletereply', messageController.deleteReply);
+router.get('/api/getyourblogs/', messageController.getYourBlogs);
 
 
 module.exports = router;
