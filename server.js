@@ -11,6 +11,7 @@ const bodyParser = require('body-parser');
 
 const authRoutes = require('./routes/authRoutes');
 const messageRoutes = require('./routes/messageRoutes');
+const tourRoutes = require('./routes/tourRoutes');
 
 const PORT = process.env.PORT || 5252;
 
@@ -33,7 +34,7 @@ app.get('/api', (req, res) => {
   });
   
 
-app.use(authRoutes,messageRoutes);
+app.use(authRoutes,messageRoutes,tourRoutes);
 
 
 

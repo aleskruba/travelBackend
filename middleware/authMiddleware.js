@@ -37,6 +37,24 @@ const checkUser = async (req, res, next) => {
 };
 
 
+
+const verifyToken = (req, res, next) => {
+    const token = req.cookies.jwt;
+    console.log(token);
+    if (!token) {
+        return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    }
+
+    try {
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decodedToken;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    }
+};
+
+
 async function verifyUser(req, res, next){
 
     const { email} = req.body;
@@ -76,4 +94,4 @@ async function verifyUser(req, res, next){
 
 
 
-module.exports = { checkUser,verifyUser,generateOTP };
+module.exports = { checkUser,verifyUser,generateOTP,verifyToken };

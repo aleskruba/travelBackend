@@ -1,4 +1,4 @@
- CREATE TABLE User (
+ CREATE TABLE user (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(255),
     firstName VARCHAR(255),
@@ -14,7 +14,7 @@
 );
 
 
-CREATE TABLE Message (
+CREATE TABLE message (
     id INT AUTO_INCREMENT PRIMARY KEY,
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     message TEXT,
@@ -22,7 +22,7 @@ CREATE TABLE Message (
     FOREIGN KEY (user_id) REFERENCES User(id)
 );
 
-CREATE TABLE Reply (
+CREATE TABLE reply (
     id INT AUTO_INCREMENT PRIMARY KEY,
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     message TEXT,
@@ -32,7 +32,7 @@ CREATE TABLE Reply (
     FOREIGN KEY (user_id) REFERENCES User(id)
 );
 
-CREATE TABLE Video (
+CREATE TABLE video (
     id INT AUTO_INCREMENT PRIMARY KEY,
     country VARCHAR(255),
     title VARCHAR(255),
@@ -40,6 +40,32 @@ CREATE TABLE Video (
     user_id INT,
     FOREIGN KEY (user_id) REFERENCES User(id)
 );
+
+
+CREATE TABLE tour (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    destination VARCHAR(255),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    tourdate DATE,
+    tourdateEnd DATE,
+    tourtype JSON,
+    fellowtraveler VARCHAR(255),
+    aboutme VARCHAR(255),
+    user_id INT,
+    FOREIGN KEY (user_id) REFERENCES User(id)
+);
+
+CREATE TABLE tourmessage (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    message TEXT,
+    user_id INT,
+    tour_id INT,
+    FOREIGN KEY (user_id) REFERENCES User(id),
+    FOREIGN KEY (tour_id) REFERENCES Tour(id)
+);
+
+
 
 
 ALTER TABLE reply CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

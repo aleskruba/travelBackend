@@ -240,7 +240,7 @@ module.exports.google_auth_post_login = async (req, res) => {
 };
 
 module.exports.updateProfile = async (req, res) => {
-    const token = req.cookies.jwt;
+    const userIdMiddleware = req.user.id;
     const updateProfile = req.body;
     const userId = updateProfile.id;
     const username = updateProfile.username ?? null;
@@ -249,12 +249,12 @@ module.exports.updateProfile = async (req, res) => {
     const email = updateProfile.email;
     const googleEmail=updateProfile.googleEmail
 
-console.log(username.length)
-    try {
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
 
+    try {
+        if (userIdMiddleware !== userId ){
+            return res.status(401).json({ error: 'Unauthorized: You can only update your own profile' });
+
+        }
         
         if (!validator.isEmail(email)) {
             return res.status(400).json({ error: 'Špatný formát emailu' });
@@ -281,14 +281,14 @@ console.log(username.length)
                     return res.status(400).json({ error: 'Příjmeni musí mít 2 až 20 znaků' });
                 }
             }
-      console.log('is 0 ')
+
       
         if  (googleEmail) {
             const sql = `UPDATE user SET username=?, firstName=?, lastName=? WHERE id=?`;
-            await database.query(sql, [username, firstName, lastName,  userId]);
+            await database.query(sql, [username, firstName, lastName,  userIdMiddleware]);
         } else {
         const sql = `UPDATE user SET username=?, firstName=?, lastName=?, email=? WHERE id=?`;
-        await database.query(sql, [username, firstName, lastName, email, userId]);
+        await database.query(sql, [username, firstName, lastName, email, userIdMiddleware]);
         }
         const accessToken = createToken(updateProfile.id);
         const refreshToken = createRefreshToken(updateProfile.id);
@@ -311,7 +311,7 @@ console.log(username.length)
             message: 'update proběhl úspěšně',
             accessToken: accessToken,
             refreshToken: refreshToken
-        });
+        }); 
 
     } catch (err) {
         console.error('Error updating user profile:', err);
@@ -319,19 +319,17 @@ console.log(username.length)
     }
 }
 
-module.exports.updatePassword = async (req, res, next) => {
-    const token = req.cookies.jwt;
+module.exports.updatePassword = async (req, res) => {
+    const userIdMiddleware = req.user.id;
     const newPassword = req.body;
     const password = newPassword.password;
     const confirmPassword = newPassword.confirmPassword;
 
     try {
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
+        if (userIdMiddleware !== userId ){
+            return res.status(401).json({ error: 'Unauthorized: You can only update your own profile' });
 
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
+        }
 
         if (password !== confirmPassword) {
             return res.status(401).json({ error: 'Hesla nejsou stejná '});
@@ -343,11 +341,11 @@ module.exports.updatePassword = async (req, res, next) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const sql = `UPDATE user SET password=? WHERE id=?`;
-        await database.query(sql, [hashedPassword, userId]);
+        await database.query(sql, [hashedPassword, userIdMiddleware]);
 
  
-        const accessToken = createToken(userId);
-        const refreshToken = createRefreshToken(userId);
+        const accessToken = createToken(userIdMiddleware);
+        const refreshToken = createRefreshToken(userIdMiddleware);
 
 
         res.cookie('jwt', accessToken, {
@@ -378,18 +376,13 @@ module.exports.updatePassword = async (req, res, next) => {
 
 
 module.exports.uploadprofileimage = async (req, res, next) => {
-    const token = req.cookies.jwt;
+    const userId = req.user.id;
     const base64String = req.body.image; // Accessing the base64 string from req.body
 
     try {
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
 
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
 
-        const cloudinaryUrl = process.env.PUBLIC_CLOUDINARY_URL;
+         const cloudinaryUrl = process.env.PUBLIC_CLOUDINARY_URL;
 
         if (!cloudinaryUrl) {
             console.error("Cloudinary URL is not defined!");
@@ -397,17 +390,16 @@ module.exports.uploadprofileimage = async (req, res, next) => {
         }
 
         if (!base64String) {
-            // Handle case where base64String is not defined
             console.error('No image selected for upload');
             return res.status(400).json({ error: 'No image selected for upload' });
         }
 
-        // Directly send the base64 string to Cloudinary
+
         const cloudinaryUploadResponse = await axios.post(
             cloudinaryUrl,
             {
                 file: base64String,
-                upload_preset: 'schoolapp', // Set your Cloudinary upload preset here
+                upload_preset: 'schoolapp', 
             }
         );
 
@@ -490,8 +482,7 @@ module.exports.verifyOTP = async (req, res, next) => {
         }
         const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
 
-        console.log('values:',values)
-        console.log(decodedToken)
+
 
         if (values.otp === decodedToken.id) {
 
@@ -515,7 +506,7 @@ module.exports.resetPassword = async (req, res, next) => {
     const values = req.body;
     const password = values.password;
     const confirmPassword = values.confirmPassword;
-    console.log(values)
+   
     try {
        if (!token) {
             return res.status(401).json({ error: 'Unauthorized: No token provided' });
@@ -524,7 +515,7 @@ module.exports.resetPassword = async (req, res, next) => {
         const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
         const tokenId = decodedToken.id;
         const userEmail = decodedToken.email;
-        console.log(tokenId,userEmail);
+
          if (password !== confirmPassword) {
             return res.status(401).json({ error: 'Hesla nejsou stejná '});
         }
@@ -589,13 +580,13 @@ module.exports.resetPassword = async (req, res, next) => {
 module.exports.checkResetPasswordToken = async (req, res, next) => {
 
     const token = req.cookies.jwtforgottenpassword	;
-    const value = req.body
-    console.log(value);
+   // const value = req.body
+
     try {
          if (!token) {
             return res.status(401).json({ error: 'Unauthorized: No token provided' });
         } 
-        console.log('checkResetPasswordToken',token);
+   //     console.log('checkResetPasswordToken',token);
         return res.status(201).json({ message: 'You are allowed to change the password',}); 
     } catch (error) {
         return res.status(401).json({ message: 'You are allowed to change the password',}); 

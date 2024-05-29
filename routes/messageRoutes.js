@@ -1,21 +1,25 @@
 const { Router } = require('express');
 const messageController = require('../controllers/messageController');
+const {verifyToken } = require('../middleware/authMiddleware');
 
 const router = Router();
 
-router.get('/api/getmessages/:id', messageController.getMessages);
-router.post('/api/createmessage', messageController.createMessage);
-router.delete('/api/deletemessage', messageController.deleteMessage);
+router.get('/api/messages/:id', messageController.getMessages);
+router.post('/api/message',verifyToken, messageController.createMessage);
+router.delete('/api/message',verifyToken, messageController.deleteMessage);
 
-router.get('/api/getreplies/:id', messageController.getReplies);
-router.post('/api/createreply', messageController.createReply);
-router.delete('/api/deletereply', messageController.deleteReply);
+router.get('/api/replies/:id', messageController.getReplies);
+router.post('/api/reply',verifyToken, messageController.createReply);
+router.delete('/api/reply',verifyToken, messageController.deleteReply);
 
 
-router.get('/api/getblogs/:id', messageController.getBlogs);
-router.post('/api/createblog', messageController.createBlog);
-//router.delete('/api/deletereply', messageController.deleteReply);
-router.get('/api/getyourblogs/', messageController.getYourBlogs);
+router.get('/api/blogs/:id', messageController.getBlogs);
+router.post('/api/blogs',verifyToken, messageController.createBlog);
+router.put('/api/blogs',verifyToken, messageController.updateBlog);
+router.delete('/api/blogs',verifyToken, messageController.deleteBlog);
+
+
+router.get('/api/yourblogs/',verifyToken, messageController.getYourBlogs);
 
 
 module.exports = router;

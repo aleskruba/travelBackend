@@ -7,7 +7,7 @@ const database = new Database();
 
 module.exports.createMessage = async (req, res) => {
     const message = req.body
-    const token = req.cookies.jwt;
+    const userId = req.user.id;
 
    
     try {
@@ -19,16 +19,7 @@ module.exports.createMessage = async (req, res) => {
             return res.status(403).json({ error: 'Příliš dlouhý text , max 250 znaků' });
   }
   
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
-        
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
-    
-        
-        
-        if (userId !== message.user_id) {
+      if (userId !== message.user_id) {
             return res.status(401).json({ error: 'Unauthorized User' });
         }
 
@@ -84,7 +75,7 @@ module.exports.getMessages = async (req, res) => {
 
 module.exports.deleteMessage = async (req, res) => {
     const  data = req.body;  
-    const token = req.cookies.jwt;
+    const userId = req.user.id;
     const messageId = data.messageId
     const user_id = data.user_id
 
@@ -95,12 +86,6 @@ module.exports.deleteMessage = async (req, res) => {
             return res.status(400).json({ error: 'No message ID provided' }); 
         }
     
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
-  
         if (userId !== user_id) {
             return res.status(401).json({ error: 'Unauthorized User' });
         }
@@ -125,9 +110,7 @@ module.exports.deleteMessage = async (req, res) => {
 
 module.exports.createReply = async (req, res) => {
     const message = req.body
-    const token = req.cookies.jwt;
-
-    console.log(message)
+    const userId = req.user.id;
    
     try {
 
@@ -138,17 +121,9 @@ module.exports.createReply = async (req, res) => {
 
         if (message.message.length > 400 ) {
             return res.status(403).json({ error: 'Příliš dlouhý text , max 250 znaků' });
-  }
+      }
   
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
-        
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
-    
-        
-        
+  
         if (userId !== message.user_id) {
             return res.status(401).json({ error: 'Unauthorized User' });
         }
@@ -166,7 +141,7 @@ module.exports.createReply = async (req, res) => {
 
 module.exports.getReplies = async (req, res) => {
     const countryId = req.params.id; 
-    console.log(countryId)
+
 
     try {
 
@@ -209,7 +184,7 @@ module.exports.getReplies = async (req, res) => {
 
 module.exports.deleteReply = async (req, res) => {
     const  data = req.body;  
-    const token = req.cookies.jwt;
+    const userId = req.user.id;
     const messageId = data.messageId
     const user_id = data.user_id
 
@@ -220,12 +195,7 @@ module.exports.deleteReply = async (req, res) => {
             return res.status(400).json({ error: 'No message ID provided' }); 
         }
     
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
-  
+ 
         if (userId !== user_id) {
             return res.status(401).json({ error: 'Unauthorized User' });
         }
@@ -249,7 +219,7 @@ module.exports.deleteReply = async (req, res) => {
 
 module.exports.getBlogs = async (req, res) => {
     const countryId = req.params.id; 
-    console.log('blog',countryId);
+
     try {
 
         const cards = await database.query(`
@@ -281,9 +251,7 @@ module.exports.getBlogs = async (req, res) => {
 
 module.exports.createBlog = async (req, res) => {
     const card = req.body
-    const token = req.cookies.jwt;
-
-    console.log(card)
+    const userId = req.user.id;
    
     try {
         if (!card.title.trim().length || !card.video.trim().length  ) {
@@ -295,14 +263,7 @@ module.exports.createBlog = async (req, res) => {
             return res.status(403).json({ error: 'Příliš dlouhý text , max 100 znaků' });
   }
   
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
-        
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
-    
-        
+       
         
         if (userId !== card.user_id) {
             return res.status(401).json({ error: 'Unauthorized User' });
@@ -323,19 +284,11 @@ module.exports.createBlog = async (req, res) => {
 
 
 module.exports.getYourBlogs = async (req, res) => {
-    const token = req.cookies.jwt;
-    console.log(token);
+    const userId = req.user.id;
+   
     try {
 
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided' });
-        }
-
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decodedToken.id;
-    
-
-        const cards = await database.query(`
+          const cards = await database.query(`
                         SELECT 
                             video.id,
                             video.title,
@@ -359,4 +312,40 @@ module.exports.getYourBlogs = async (req, res) => {
         res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 
+}
+
+
+module.exports.updateBlog = async (req, res) => {
+    const card = req.body
+
+    try {
+  
+        
+        const sql = `UPDATE video SET title=?, video=? WHERE id=?`;
+        
+        const response =  await database.query(sql, [card.title,card.video, card.id]);
+        res.status(201).json({response});
+    } catch (err) {
+        console.error('Error updating user profile:', err);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+}
+
+
+module.exports.deleteBlog = async (req, res) => {
+    const values = req.body
+    const userId = req.user.id;
+   
+
+    try {
+
+        if (userId === values.user_id) {
+     
+          const response = await database.query('DELETE FROM video WHERE id = ?', [values.id]);
+         res.status(201).json({response}); 
+        }
+    } catch (err) {
+        console.error('Error updating user profile:', err);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
 }
