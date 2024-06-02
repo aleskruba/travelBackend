@@ -590,7 +590,7 @@ module.exports.checkResetPasswordToken = async (req, res, next) => {
         return res.status(201).json({ message: 'You are allowed to change the password',}); 
     } catch (error) {
         return res.status(401).json({ message: 'You are allowed to change the password',}); 
-      throw error;
+
     }
 }
 

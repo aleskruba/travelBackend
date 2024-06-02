@@ -40,8 +40,9 @@ const checkUser = async (req, res, next) => {
 
 const verifyToken = (req, res, next) => {
     const token = req.cookies.jwt;
-    console.log(token);
+
     if (!token) {
+        console.log('no token')
         return res.status(401).json({ error: 'Unauthorized: No token provided' });
     }
 
@@ -58,8 +59,7 @@ const verifyToken = (req, res, next) => {
 async function verifyUser(req, res, next){
 
     const { email} = req.body;
-    console.log('verify User',email);
-    try {
+      try {
         
         const rows = await database.query('SELECT * FROM user WHERE email = ?', [email]);
     

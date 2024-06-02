@@ -99,9 +99,6 @@ module.exports.deleteMessage = async (req, res) => {
         res.status(201).json({ message: 'Zpráva úspěšně smazána' });
     } catch (err) {
         console.error(err);
-        if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-        }
         res.status(500).json({ error: 'Chyba serveru' });
     }
 };
@@ -210,9 +207,6 @@ module.exports.deleteReply = async (req, res) => {
         res.status(201).json({ message: 'Zpráva úspěšně smazána' });
     } catch (err) {
         console.error(err);
-        if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-        }
         res.status(500).json({ error: 'Chyba serveru' });
     }
 };
