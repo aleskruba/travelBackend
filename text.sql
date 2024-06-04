@@ -77,5 +77,16 @@ CREATE TABLE tourreply (
     FOREIGN KEY (tourmessage_id) REFERENCES tourmessage(id)
  );
 
+CREATE TABLE votes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    message_id INT,
+    vote_type ENUM('thumb_up', 'thumb_down'),
+    vote_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user(id),
+    FOREIGN KEY (message_id) REFERENCES message(id),
+    UNIQUE (user_id, message_id) -- Ensure a user can only vote once per message
+);
+
 
 ALTER TABLE reply CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

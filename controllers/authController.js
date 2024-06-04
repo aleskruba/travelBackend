@@ -287,6 +287,16 @@ module.exports.updateProfile = async (req, res) => {
             const sql = `UPDATE user SET username=?, firstName=?, lastName=? WHERE id=?`;
             await database.query(sql, [username, firstName, lastName,  userIdMiddleware]);
         } else {
+
+        const existingEmail = await database.query('SELECT * FROM user WHERE email = ? AND id != ?', [email,userIdMiddleware]);
+            
+       
+        if (existingEmail.length) {
+      
+            return res.status(401).json({ error: 'Tento email je již zaregistrovaný' });
+            }
+    
+
         const sql = `UPDATE user SET username=?, firstName=?, lastName=?, email=? WHERE id=?`;
         await database.query(sql, [username, firstName, lastName, email, userIdMiddleware]);
         }

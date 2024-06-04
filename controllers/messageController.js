@@ -343,3 +343,55 @@ module.exports.deleteBlog = async (req, res) => {
         res.status(500).json({ error: 'Chyba server neodpovidá' });
     }
 }
+
+
+module.exports.getVotes = async (req, res) => { 
+    try {
+        // Assuming you have a function in your database class to retrieve votes
+        const votes = await database.query(`
+            SELECT 
+                votes.id,
+                votes.user_id,
+                votes.message_id,
+                votes.vote_type,
+                votes.vote_date,
+                message.country AS country
+            FROM votes
+            JOIN 
+       
+            message ON votes.message_id = message.id   
+            WHERE country = ?`, [req.params.country]);
+        res.status(200).json({votes:votes});
+    } catch (error) {
+        console.error('Error fetching votes:', error);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+};
+module.exports.postVote = async (req, res) => { 
+    try {
+        // Assuming you have a function in your database class to check if a vote exists
+        const existingVote = await database.query(`
+            SELECT * FROM votes 
+            WHERE user_id = ? AND message_id = ?`, [req.body.user_id, req.body.message_id]);
+
+        if (existingVote.length > 0) {
+            // If the user has already voted, update the vote
+            await database.query(`
+                UPDATE votes 
+                SET vote_type = ? 
+                WHERE user_id = ? AND message_id = ?`, [req.body.vote_type, req.body.user_id,req.body.message_id]);
+        } else {
+            // If the user has not voted yet, insert a new vote
+            await database.query(`
+                INSERT INTO votes (user_id, message_id, vote_type) 
+                VALUES (?, ?, ?)`, [req.body.user_id, req.body.message_id, req.body.vote_type]);
+        }
+        
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error inserting/updating vote:', error);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+};
+
+

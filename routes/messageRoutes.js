@@ -22,4 +22,7 @@ router.delete('/api/blogs',verifyToken, messageController.deleteBlog);
 router.get('/api/yourblogs/',verifyToken, messageController.getYourBlogs);
 
 
+router.get('/api/:country/votes', messageController.getVotes);
+router.post('/api/:country/vote',messageController.postVote);
+
 module.exports = router;
