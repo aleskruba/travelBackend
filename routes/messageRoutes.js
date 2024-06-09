@@ -25,4 +25,8 @@ router.get('/api/yourblogs/',verifyToken, messageController.getYourBlogs);
 router.get('/api/:country/votes', messageController.getVotes);
 router.post('/api/:country/vote',messageController.postVote);
 
+router.get('/api/:country/votesreply', messageController.getVotesReply);
+router.post('/api/:country/votereply',messageController.postVoteReply);
+
+
 module.exports = router;

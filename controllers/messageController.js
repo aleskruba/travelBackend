@@ -358,7 +358,7 @@ module.exports.getVotes = async (req, res) => {
                 message.country AS country
             FROM votes
             JOIN 
-       
+                
             message ON votes.message_id = message.id   
             WHERE country = ?`, [req.params.country]);
         res.status(200).json({votes:votes});
@@ -385,6 +385,63 @@ module.exports.postVote = async (req, res) => {
             await database.query(`
                 INSERT INTO votes (user_id, message_id, vote_type) 
                 VALUES (?, ?, ?)`, [req.body.user_id, req.body.message_id, req.body.vote_type]);
+        }
+        
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error inserting/updating vote:', error);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+};
+
+
+
+module.exports.getVotesReply = async (req, res) => { 
+    try {
+        // Assuming you have a function in your database class to retrieve votes
+        const votesReply = await database.query(`
+            SELECT 
+                votesreply.id,
+                votesreply.user_id,
+                votesreply.reply_id,
+                votesreply.vote_type,
+                votesreply.vote_date,
+           
+                message.id AS message_id,
+                message.country AS country
+           
+                FROM votesreply
+            JOIN 
+                
+            message ON votesreply.message_id = message.id   
+           
+            WHERE country = ?`, [req.params.country]);
+        res.status(200).json({votesReply:votesReply});
+    } catch (error) {
+        console.error('Error fetching votes:', error);
+        res.status(500).json({ error: 'Chyba server neodpovidá' });
+    }
+};
+module.exports.postVoteReply = async (req, res) => { 
+
+    console.log('vote_type:',req.body.vote_type, 'user_id:' ,req.body.user_id,'messageid:',req.body.message_id,'replyid:',req.body.reply_id)
+    try {
+        // Assuming you have a function in your database class to check if a vote exists
+        const existingVote = await database.query(`
+            SELECT * FROM votesreply 
+            WHERE user_id = ? AND reply_id = ?`, [req.body.user_id, req.body.reply_id]);
+        console.log('existingvote:',existingVote)
+        if (existingVote.length > 0) {
+            // If the user has already voted, update the vote
+            await database.query(`
+                UPDATE votesreply 
+                SET vote_type = ? 
+                WHERE user_id = ? AND reply_id = ?`, [req.body.vote_type, req.body.user_id,req.body.reply_id]);
+        } else {
+            // If the user has not voted yet, insert a new vote
+            await database.query(`
+                INSERT INTO votesreply (user_id, message_id, reply_id, vote_type) 
+                VALUES (?, ?, ?, ?)`, [req.body.user_id, req.body.message_id, req.body.reply_id, req.body.vote_type]);
         }
         
         res.status(200).json({ success: true });
