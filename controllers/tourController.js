@@ -569,7 +569,7 @@ module.exports.createTourReply = async (req, res) => {
         res.status(201).json({ message: newTourReply.insertId });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Chyba server neodpovidá' });
+        res.status(500).json({ error: 'Tato zpráva již neexistuje' });
     }
 };
 

@@ -108,10 +108,11 @@ module.exports.deleteMessage = async (req, res) => {
 module.exports.createReply = async (req, res) => {
     const message = req.body
     const userId = req.user.id;
+    console.log(message);
    
     try {
 
-            if (!message.message.length) {
+        if (!message.message.length) {
                 return res.status(403).json({ error: 'Žádný text' });
       }
       
@@ -124,12 +125,23 @@ module.exports.createReply = async (req, res) => {
         if (userId !== message.user_id) {
             return res.status(401).json({ error: 'Unauthorized User' });
         }
-  
+
+        const checkMessage = await database.query('SELECT * FROM message WHERE id = ?', [message.message_id]);
+        console.log([checkMessage])
+        console.log([checkMessage].length)
+        console.log(checkMessage)
+        console.log(checkMessage.length)
+        if (checkMessage.length === 0) {
+
+            return res.status(404).json({ error: 'Tato zpráva nexistuje' });
+        }
+
+        
         const newReply = await database.query('INSERT INTO reply (message,message_id,user_id) VALUES (?, ?, ? )', [message.message,message.message_id,userId]);
         res.status(201).json({ message: newReply.insertId }); 
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Chyba server neodpovidá' });
+        res.status(500).json({ error: 'Tato zpráva již neexistuje' });
     }
 }
 
