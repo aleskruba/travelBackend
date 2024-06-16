@@ -11,6 +11,7 @@ dotenv.config();
 
 
 const checkUser = async (req, res, next) => {
+    
     const token = req.cookies.jwt;
     if (token) {
         try {
