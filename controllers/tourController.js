@@ -498,6 +498,7 @@ module.exports.createTourReply = async (req, res) => {
     const tourMessage = req.body;
     const userId = req.user.id;
 
+
     try {
         // Validate input
         if (!tourMessage.message.trim().length) {
@@ -515,7 +516,7 @@ module.exports.createTourReply = async (req, res) => {
         let messageToInsert = tourMessage.message;
 
         if (tourMessage.messageType === 1) {
-            messageToInsert = encrypt(tourMessage.message);
+            messageToInsert = tourMessage.message;
         }
 
         const query = `
