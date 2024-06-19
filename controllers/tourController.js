@@ -1,38 +1,15 @@
 const jwt = require('jsonwebtoken');
 const Database = require('../database');
 const axios = require('axios');
-const crypto = require('crypto');
+
 
 
 const database = new Database();
 
 
-const algorithm = 'aes-256-cbc';
-const key = crypto.randomBytes(32); // Store this securely and reuse the same key for encryption/decryption
-const iv = crypto.randomBytes(16); // Initialization vector, should be random for each encryption
 
-function encrypt(text) {
-  let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
-}
 
-// Function to decrypt text
-const decrypt = (encryptedMessage) => {
-    try {
-        const parts = encryptedMessage.split(':');
-        const iv = Buffer.from(parts[0], 'hex');
-        const encryptedData = Buffer.from(parts[1], 'hex');
-        const decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
-        let decrypted = decipher.update(encryptedData);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return decrypted.toString();
-    } catch (error) {
-        console.error('Error decrypting message:', error);
-        return 'Error decrypting message';
-    }
-};
+
 
 
 module.exports.getTours = async (req, res) => {
@@ -507,18 +484,6 @@ module.exports.getTourReplies = async (req, res) => {
                 AND (tourreply.messageType = 0 OR tourreply.user_id = ? OR tourmessage.user_id = ?)
         `, [tourId, user_id_jwt, user_id_jwt]);
 
-        // Decrypt private messages
-        tourReplies.forEach(reply => {
-            if (reply.messageType === 1) {
-                try {
-                    console.log(typeof(reply.message),reply.message)
-                    reply.message = decrypt(reply.message);
-                } catch (error) {
-                    console.error('Error decrypting message:', error);
-                    reply.message = 'Error decrypting message';
-                }
-            }
-        });
 
         res.status(200).json({ tourReplies });
     } catch (error) {
